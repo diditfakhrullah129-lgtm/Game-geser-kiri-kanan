@@ -1,0 +1,10 @@
+{
+  "name": "Kuis Gerak A atau B - Interactive Motion Quiz",
+  "description": "Game kuis interaktif berbasis kamera di mana siswa atau pemain bergerak ke sisi kiri (A) atau kanan (B) layar secara real-time.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

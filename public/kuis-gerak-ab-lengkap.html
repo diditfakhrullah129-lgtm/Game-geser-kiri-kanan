@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kuis Gerak A atau B - Interactive Motion Quiz (Versi Lengkap)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#020617;--card:#0f172a;--border:#1e293b;--tx:#f8fafc;--mut:#94a3b8;
+  --a:#2563eb;--a-glow:#3b82f6;--b:#ea580c;--b-glow:#f97316;
+  --ok:#10b981;--no:#ef4444;--gold:#f59e0b;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font-family:'Plus Jakarta Sans',system-ui,sans-serif;min-height:100vh;overflow-x:hidden}
+button,select,input,textarea{font:inherit;color:inherit}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 18px;border-radius:12px;border:none;font-weight:700;font-size:13px;cursor:pointer;transition:.2s}
+.btn:hover{filter:brightness(1.1);transform:scale(1.02)}
+.btn:active{transform:scale(.98)}
+.btn-pri{background:var(--a);color:#fff}
+.btn-go{background:var(--ok);color:#022c22;font-size:15px;padding:12px 24px}
+.btn-sec{background:#1e293b;color:var(--tx);border:1px solid #334155}
+.btn-gold{background:var(--gold);color:#020617}
+.chip{background:#0f172a;border:1px solid #334155;border-radius:999px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;transition:.15s}
+.chip.on{background:var(--gold);color:#020617;border-color:var(--gold)}
+.panel{background:#0f172a99;backdrop-filter:blur(10px);border:1px solid #1e293b;border-radius:20px;padding:20px}
+
+/* Setup Screen */
+#setup{max-width:860px;margin:24px auto;padding:16px;display:flex;flex-direction:column;gap:18px}
+.hero{text-align:center;margin-bottom:8px}
+.hero h1{font-size:clamp(26px,4vw,42px);font-weight:900;letter-spacing:-.02em}
+.hero p{color:var(--mut);font-size:14px;margin-top:6px}
+.ab-badge{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;font-weight:900;font-size:20px;color:#fff}
+.start-banner{background:linear-gradient(135deg,#1d4ed8,#7c3aed,#ea580c);padding:2px;border-radius:20px}
+.start-inner{background:#0b1120;border-radius:18px;padding:16px 20px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+label{font-size:12px;color:var(--mut);font-weight:600;display:flex;flex-direction:column;gap:6px}
+select,input[type="text"],input[type="number"],textarea{background:#020617;border:1px solid #334155;border-radius:10px;padding:10px;font-size:13px}
+select:focus,textarea:focus,input:focus{outline:none;border-color:var(--a)}
+
+/* Game Screen */
+#game{display:none;position:fixed;inset:0;background:#000;overflow:hidden;user-select:none}
+#cam{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);background:#020617}
+.zone{position:absolute;top:0;bottom:0;width:50%;pointer-events:none;transition:background .4s}
+#za{left:0}#zb{right:0}
+.zone.ok{background:rgba(16,185,129,.35);box-shadow:inset 0 0 60px rgba(16,185,129,.6)}
+.zone.no{background:rgba(239,68,68,.3)}
+#divider{position:absolute;top:0;bottom:0;left:50%;width:2px;background:rgba(255,255,255,.3);box-shadow:0 0 12px #fff}
+#top-hud{position:absolute;top:16px;left:0;right:0;padding:0 24px;display:flex;flex-direction:column;align-items:center;z-index:20;pointer-events:none}
+#timer-bar{position:absolute;top:0;left:0;height:8px;background:var(--ok);width:100%;transition:width .1s linear}
+#q-card{margin-top:10px;background:#020617cc;backdrop-filter:blur(16px);border:2px solid rgba(255,255,255,.2);border-radius:20px;padding:16px 28px;max-width:880px;text-align:center;box-shadow:0 10px 40px #000;pointer-events:auto;position:relative}
+#q-title{font-size:clamp(18px,2.8vw,34px);font-weight:900;line-height:1.25}
+#clock-num{position:absolute;top:14px;right:18px;background:#000;border:1px solid #fff3;padding:4px 10px;border-radius:10px;font-weight:900;font-size:15px;font-family:monospace}
+.choice{position:absolute;top:42%;transform:translateY(-50%);max-width:42%;padding:16px 20px;border-radius:20px;background:#020617d9;backdrop-filter:blur(16px);border:2px solid #fff2;display:flex;align-items:center;gap:14px;box-shadow:0 12px 36px #000}
+#oa{left:24px;border-color:var(--a)}
+#ob{right:24px;flex-direction:row-reverse;text-align:right;border-color:var(--b)}
+.choice.win{border-color:var(--ok)!important;box-shadow:0 0 35px var(--ok)!important;transform:translateY(-50%) scale(1.05)}
+.opt-text{font-size:clamp(16px,2.4vw,26px);font-weight:800}
+#reveal-card{position:absolute;top:54%;left:50%;transform:translate(-50%,-50%);background:#020617f0;backdrop-filter:blur(24px);border:2px solid var(--ok);border-radius:24px;padding:24px 32px;text-align:center;max-width:540px;width:90%;box-shadow:0 0 60px rgba(16,185,129,.5);display:none;z-index:30}
+#ctl-bar{position:absolute;bottom:20px;left:0;right:0;display:flex;justify-content:center;gap:10px;z-index:25}
+.ctl-box{background:#020617e6;backdrop-filter:blur(12px);border:1px solid #fff3;padding:8px 16px;border-radius:18px;display:flex;align-items:center;gap:8px}
+
+@keyframes jumpGlow {
+  0% { transform: translate(-50%, 0) scale(0.6) rotate(-6deg); opacity: 0; filter: drop-shadow(0 0 0px #10b981); }
+  25% { transform: translate(-50%, -35px) scale(1.4) rotate(4deg); opacity: 1; filter: drop-shadow(0 0 30px #10b981) drop-shadow(0 0 50px #f59e0b); }
+  50% { transform: translate(-50%, -60px) scale(1.25) rotate(-2deg); opacity: 1; filter: drop-shadow(0 0 20px #10b981); }
+  100% { transform: translate(-50%, -100px) scale(0.9); opacity: 0; }
+}
+.floating-jump-badge {
+  position: fixed; z-index: 100; pointer-events: none;
+  animation: jumpGlow 1.25s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 20px; border-radius: 16px; background: #020617f2;
+  border: 2px solid #f59e0b; box-shadow: 0 0 40px #f59e0b, 0 0 60px #10b981;
+}
+
+/* Modal Leaderboard */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(8px);z-index:60;place-items:center;padding:16px}
+.modal-box{background:#0f172a;border:1px solid #334155;border-radius:24px;max-width:620px;width:100%;max-height:90vh;overflow-y:auto;padding:24px;box-shadow:0 20px 60px #000}
+</style>
+</head>
+<body>
+
+<!-- SETUP SCREEN -->
+<div id="setup">
+  <div class="hero">
+    <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:#1e293b;border-radius:999px;font-size:11px;font-weight:700;color:var(--a);margin-bottom:8px">🎮 WEBCAM MOTION QUIZ</div>
+    <h1>Kuis Gerak: Pilih <span style="color:var(--a)">A</span> atau <span style="color:var(--b)">B</span></h1>
+    <p>Siswa bergerak ke sisi Kiri (A) atau Kanan (B) di depan kamera kelas sebelum waktu habis!</p>
+  </div>
+
+  <div class="start-banner">
+    <div class="start-inner">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="display:flex;margin-right:-10px">
+          <div class="ab-badge" style="background:var(--a)">A</div>
+          <div class="ab-badge" style="background:var(--b);margin-left:-10px">B</div>
+        </div>
+        <div>
+          <div style="font-weight:800;font-size:17px">Siap Memulai Kuis?</div>
+          <div style="font-size:12px;color:var(--mut)" id="ready-info">Topik: Informatika • 10 Soal • 15s/soal</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-sec" onclick="openLeaderboard()">🏆 Papan Peringkat (Top 5)</button>
+        <button class="btn btn-go" id="start-btn" onclick="openParticipantModal()">▶ MULAI SEKARANG</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <!-- Kamera & Opsi -->
+    <div class="panel">
+      <b style="font-size:14px;text-transform:uppercase;letter-spacing:.05em">Kamera & Sensor</b>
+      <div style="margin-top:10px;display:grid;gap:10px">
+        <label>Pilih Kamera Web
+          <select id="cam-select"><option value="">Kamera Otomatis</option></select>
+        </label>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-sec" onclick="detectCameras()" style="flex:1">🔍 Deteksi Kamera</button>
+          <button class="btn btn-sec" onclick="toggleMirror()" style="flex:1" id="mirror-btn">Mode Cermin: ON</button>
+        </div>
+        <p style="font-size:11px;color:var(--mut)">Webcam menghadap ke siswa dengan posisi Kiri (A) dan Kanan (B).</p>
+      </div>
+    </div>
+
+    <!-- Materi Soal -->
+    <div class="panel">
+      <b style="font-size:14px;text-transform:uppercase;letter-spacing:.05em">Pilihan Materi Soal</b>
+      <div style="margin-top:10px;display:grid;gap:10px">
+        <label>Mata Pelajaran
+          <select id="topic-select" onchange="loadTopic()">
+            <option value="Informatika">Informatika & Komputer</option>
+            <option value="Matematika">Matematika Dasar & Logika</option>
+            <option value="IPA">Ilmu Pengetahuan Alam (IPA)</option>
+            <option value="Pengetahuan Umum">Pengetahuan Umum & Indonesia</option>
+            <option value="Bahasa Indonesia">Bahasa Indonesia</option>
+            <option value="Bahasa Inggris">Bahasa Inggris (Vocabulary)</option>
+            <option value="Tebak Seru">Tebak Seru & Ice Breaking</option>
+            <option value="Kustom">Soal Kustom / Upload Sendiri</option>
+          </select>
+        </label>
+        <div style="display:flex;gap:10px">
+          <label style="flex:1">Jumlah Soal
+            <input type="number" id="q-count" min="3" max="30" value="10" onchange="updateReadyInfo()">
+          </label>
+          <label style="flex:1">Waktu Per Soal
+            <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:2px" id="time-chips"></div>
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upload & Edit File Soal -->
+  <div class="panel" id="drop-area">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <b>Upload File Soal Sendiri (.xlsx, .csv, .txt)</b>
+      <button class="btn btn-sec" onclick="downloadSampleCSV()" style="font-size:11px">📥 Unduh Contoh CSV</button>
+    </div>
+    <p style="font-size:12px;color:var(--mut);margin:6px 0">Format 4 kolom: Pertanyaan | Pilihan A | Pilihan B | Jawaban (A atau B).</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <input type="file" id="file-input" accept=".xlsx,.xls,.csv,.txt" style="display:none" onchange="handleFile(this.files[0])">
+      <button class="btn btn-sec" onclick="document.getElementById('file-input').click()">📂 Pilih File Excel/CSV</button>
+      <button class="btn btn-sec" onclick="togglePasteArea()">📋 Tempel Teks Soal</button>
+    </div>
+    <div id="paste-box" style="display:none;margin-top:10px">
+      <textarea id="paste-ta" rows="4" placeholder="Ibu kota Indonesia adalah...\tJakarta\tBandung\tA" style="width:100%"></textarea>
+      <button class="btn btn-pri" onclick="applyPaste()" style="margin-top:6px">Terapkan Soal Tempelan</button>
+    </div>
+    <div id="upload-status" style="font-size:12px;color:var(--ok);margin-top:6px"></div>
+  </div>
+</div>
+
+<!-- GAME ARENA -->
+<div id="game">
+  <video id="cam" autoplay playsinline muted></video>
+  <div class="zone" id="za"></div>
+  <div class="zone" id="zb"></div>
+  <div id="divider"></div>
+  <div id="timer-bar"></div>
+
+  <div id="top-hud">
+    <div id="q-card">
+      <div id="clock-num">15s</div>
+      <div style="font-size:11px;color:var(--a-glow);font-weight:700;text-transform:uppercase" id="q-meta">SOAL 1 / 10</div>
+      <div id="q-title">Pertanyaan Kuis Akan Muncul Di Sini...</div>
+    </div>
+  </div>
+
+  <div class="choice" id="oa">
+    <div class="ab-badge" style="background:var(--a)">A</div>
+    <div>
+      <div style="font-size:11px;color:#93c5fd;font-weight:700;text-transform:uppercase">Zona Kiri</div>
+      <div class="opt-text" id="text-a">Pilihan A</div>
+    </div>
+  </div>
+
+  <div class="choice" id="ob">
+    <div class="ab-badge" style="background:var(--b)">B</div>
+    <div>
+      <div style="font-size:11px;color:#fdba74;font-weight:700;text-transform:uppercase">Zona Kanan</div>
+      <div class="opt-text" id="text-b">Pilihan B</div>
+    </div>
+  </div>
+
+  <div id="reveal-card">
+    <div style="font-size:11px;font-weight:900;letter-spacing:.1em;color:var(--ok);text-transform:uppercase">WAKTU HABIS! JAWABAN BENAR:</div>
+    <div style="font-size:32px;font-weight:900;margin:8px 0" id="reveal-ans">JAWABAN: A</div>
+    <p id="reveal-exp" style="font-size:13px;color:#cbd5e1;background:#0b1120;padding:10px;border-radius:12px;margin:10px 0"></p>
+    
+    <div style="display:flex;align-items:center;justify-content:space-between;background:#0b1120;border:1px solid #1e293b;padding:10px 14px;border-radius:14px;margin:10px 0" id="reveal-score-box">
+      <div style="text-align:left">
+        <span style="font-size:11px;color:#94a3b8;display:block">Poin Siswa:</span>
+        <span id="score-counter-txt" style="font-size:20px;font-weight:900;color:var(--gold)">0 Poin</span>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-sec" onclick="modScore(-1)" style="padding:6px 12px">-</button>
+        <button class="btn btn-go" onclick="addScoreAnim(event)" style="padding:8px 16px;font-size:13px;background:var(--ok);color:#022c22;font-weight:900">👍 +1 Siswa Benar</button>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:14px">
+      <button class="btn btn-sec" onclick="repeatQuestion()">🔄 Ulangi (R)</button>
+      <button class="btn btn-go" onclick="nextQuestion()" id="next-btn-modal">Lanjut Soal ➡</button>
+    </div>
+  </div>
+
+  <div id="ctl-bar">
+    <div class="ctl-box">
+      <button class="btn btn-sec" onclick="repeatQuestion()">🔄 Ulangi</button>
+      <button class="btn btn-sec" onclick="togglePause()" id="pause-btn">⏸ Jeda</button>
+      <button class="btn btn-go" onclick="nextQuestion()" id="main-next-btn">Kunci Jawaban (Spasi)</button>
+      <button class="btn btn-sec" onclick="exitToMenu()">🚪 Keluar</button>
+    </div>
+  </div>
+</div>
+
+<!-- BACKGROUND MUSIC TRACK (HARVEST MOON BACK TO NATURE OST - TITLE) -->
+<audio id="bgm-player" src="./assets/aistudio/OST_Harvest_Moon_back_to_nature_-_Title__mp3.pm__eecaa09b.mp3" loop preload="auto"></audio>
+
+<!-- PARTICIPANT SELECTION MODAL -->
+<div class="modal-bg" id="participant-modal">
+  <div class="modal-box" style="max-width:560px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--a);text-transform:uppercase">Identitas Pemain</div>
+        <h3 style="font-size:22px;font-weight:900">Pilih Mode Partisipasi</h3>
+      </div>
+      <button class="btn btn-sec" onclick="closeParticipantModal()">✕</button>
+    </div>
+
+    <!-- Mode Selector Cards -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0">
+      <div id="card-pribadi" onclick="setPartMode('pribadi')" style="border:2px solid var(--a);background:#1e3a8a33;border-radius:16px;padding:14px;cursor:pointer">
+        <div style="font-size:24px;margin-bottom:4px">👤</div>
+        <b style="font-size:15px;display:block">Pribadi (1 Siswa)</b>
+        <span style="font-size:11px;color:var(--mut)">Main mandiri perorangan</span>
+      </div>
+      <div id="card-kelompok" onclick="setPartMode('kelompok')" style="border:1px solid #334155;background:#020617;border-radius:16px;padding:14px;cursor:pointer">
+        <div style="font-size:24px;margin-bottom:4px">👥</div>
+        <b style="font-size:15px;display:block">Kelompok (Tim)</b>
+        <span style="font-size:11px;color:var(--mut)">Main bersama satu regu</span>
+      </div>
+    </div>
+
+    <!-- Pribadi Form -->
+    <div id="form-pribadi" style="display:grid;gap:10px;background:#020617;padding:14px;border-radius:16px;border:1px solid #1e293b">
+      <label>Nama Lengkap Siswa *
+        <input type="text" id="part-pribadi-name" placeholder="Contoh: Budi Santoso" value="Budi Santoso">
+      </label>
+      <label>Kelas
+        <input type="text" id="part-pribadi-class" placeholder="Contoh: Kelas 7B" value="Kelas 7B">
+      </label>
+    </div>
+
+    <!-- Kelompok Form -->
+    <div id="form-kelompok" style="display:none;grid-gap:10px;background:#020617;padding:14px;border-radius:16px;border:1px solid #1e293b">
+      <label>Nama Kelompok / Tim *
+        <input type="text" id="part-group-name" placeholder="Contoh: Kelompok Garuda" value="Kelompok Garuda">
+      </label>
+      <label>Kelas
+        <input type="text" id="part-group-class" placeholder="Contoh: Kelas 7B" value="Kelas 7B">
+      </label>
+      <label>Daftar Nama Anggota Kelompok
+        <div style="display:flex;gap:6px">
+          <input type="text" id="part-member-input" placeholder="Ketik nama anggota lalu tekan Tambah" style="flex:1">
+          <button class="btn btn-pri" type="button" onclick="addMemberTag()">+ Tambah</button>
+        </div>
+      </label>
+      <div id="members-chip-container" style="display:flex;flex-wrap:wrap;gap:6px;min-height:32px"></div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;border-top:1px solid #334155;padding-top:12px">
+      <button class="btn btn-sec" onclick="closeParticipantModal()">Batal</button>
+      <button class="btn btn-go" onclick="confirmParticipantAndStart()">🚀 MULAI KUIS GERAK</button>
+    </div>
+  </div>
+</div>
+
+<!-- LEADERBOARD MODAL -->
+<div class="modal-bg" id="leaderboard-modal">
+  <div class="modal-box">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h3 style="font-size:20px;font-weight:900">🏆 Papan Peringkat Sesi (Top 5)</h3>
+      <button class="btn btn-sec" onclick="closeLeaderboard()">✕</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <button class="btn btn-pri" id="tab-top-score" onclick="switchLbTab('score')">🎯 Jawaban Terbanyak</button>
+      <button class="btn btn-sec" id="tab-top-speed" onclick="switchLbTab('speed')">⚡ Waktu Tercepat</button>
+    </div>
+    <div id="lb-list" style="display:grid;gap:8px"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;border-top:1px solid #334155;padding-top:12px">
+      <button class="btn btn-sec" onclick="resetLb()" style="font-size:11px">Reset Data Peringkat</button>
+      <button class="btn btn-pri" onclick="closeLeaderboard()">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// QUESTION BANK
+var BANK = {
+"Informatika":[
+  ["Perangkat lunak yang mengatur kerja hardware komputer adalah...","Browser","Sistem Operasi (OS)","B","Sistem operasi seperti Windows atau Linux mengontrol hardware."],
+  ["Protokol aman dan terenkripsi untuk membuka web adalah...","HTTPS","HTTP","A","S berarti Secure menggunakan enkripsi SSL/TLS."],
+  ["Bahasa untuk menyusun struktur dasar halaman web adalah...","HTML","Python","A","HTML adalah fondasi dari seluruh halaman web."],
+  ["Perangkat keras untuk mencetak dokumen fisik disebut...","Scanner","Printer","B","Printer adalah output device pencetak."],
+  ["Satuan terkecil data dalam sistem komputer adalah...","Bit","Byte","A","1 Byte terdiri dari 8 bit."],
+  ["Kombinasi tombol keyboard untuk Copy adalah...","Ctrl + C","Ctrl + V","A","Ctrl + C untuk Copy, Ctrl + V untuk Paste."],
+  ["Otak pemrosesan utama pada komputer adalah...","CPU / Processor","Harddisk","A","CPU mengeksekusi instruksi data."],
+  ["RAM bersifat penyimpanan data...","Sementara (Volatile)","Permanen","A","Data di RAM hilang saat komputer mati."]
+],
+"Matematika":[
+  ["Berapakah hasil dari 7 x 8?","54","56","B","7 dikali 8 adalah 56."],
+  ["Hasil dari 144 : 12 adalah...","12","14","A","12 x 12 = 144."],
+  ["Manakah yang merupakan bilangan prima?","9","11","B","11 hanya habis dibagi 1 dan 11."],
+  ["Sudut siku-siku besarnya...","90 derajat","180 derajat","A","Sudut siku-siku selalu tepat 90 derajat."],
+  ["Akar kuadrat dari 81 (√81) adalah...","8","9","B","9 x 9 = 81."],
+  ["Keliling persegi dengan sisi 5 cm adalah...","20 cm","25 cm","A","Keliling = 4 x 5 cm = 20 cm."]
+],
+"IPA":[
+  ["Planet terdekat dari Matahari adalah...","Merkurius","Venus","A","Merkurius adalah planet terdekat dari pusat tata surya."],
+  ["Proses tumbuhan membuat makanan sendiri disebut...","Fotosintesis","Respirasi","A","Fotosintesis dibantu sinar matahari dan klorofil."],
+  ["Air membeku pada suhu...","0 derajat Celsius","100 derajat Celsius","A","Titik beku air adalah 0°C."],
+  ["Alat pernapasan utama pada ikan adalah...","Paru-paru","Insang","B","Insang menyaring oksigen di dalam air."],
+  ["Gas yang kita hirup saat bernapas adalah...","Oksigen (O2)","Karbon Dioksida","A","Kita menghirup oksigen dan melepaskan CO2."]
+],
+"Pengetahuan Umum":[
+  ["Presiden pertama Republik Indonesia adalah...","Ir. Soekarno","Drs. Moh. Hatta","A","Soekarno adalah proklamator kemerdekaan dan presiden pertama RI."],
+  ["Hari Kemerdekaan Republik Indonesia jatuh pada...","17 Agustus","28 Oktober","A","Indonesia merdeka 17 Agustus 1945."],
+  ["Lambang sila pertama Pancasila adalah...","Bintang Emas","Rantai","A","Sila ke-1: Bintang Emas Ketuhanan."],
+  ["Samudra terluas di dunia adalah...","Samudra Pasifik","Samudra Hindia","A","Pasifik mencakup 30% permukaan bumi."]
+],
+"Bahasa Indonesia":[
+  ["Lawan kata (antonim) dari Rajin adalah...","Malas","Giat","A","Lawan dari rajin adalah malas."],
+  ["Kalimat tanya selalu diakhiri dengan tanda...","Titik (.)","Tanda Tanya (?)","B","Tanda tanya mengakhiri pertanyaan."],
+  ["Manakah yang merupakan kata benda (nomina)?","Meja","Berlari","A","Meja adalah kata benda, berlari adalah kata kerja."]
+],
+"Bahasa Inggris":[
+  ["What is the English word for 'Kucing'?","Cat","Dog","A","Cat = Kucing."],
+  ["The opposite of 'Hot' is...","Cold","Warm","A","Hot >< Cold."],
+  ["How do you say 'Selamat Pagi' in English?","Good Morning","Good Evening","A","Good morning digunakan di pagi hari."]
+],
+"Tebak Seru":[
+  ["Ayam berkokok bertanda pagi. Kalau ayam bertelur bertanda apa?","Bertanda punya telur","Bertanda siang","A","Tandanya punya telur!"],
+  ["Makin diisi air atau pasir benda ini makin ringan dipegang. Benda apa?","Perahu bocor","Balon","A","Perahu bocor tenggelam jadi lepas dari pegangan!"]
+]
+};
+
+var timePerQ = 15;
+var activeQuestions = [];
+var curIdx = 0;
+var timer = null;
+var t0 = 0;
+var isRevealed = false;
+var isPaused = false;
+var isMirrored = true;
+var camStream = null;
+var totalSessionTime = 0;
+var playerCorrect = 0;
+
+// Init Time Chips
+[5, 10, 15, 20, 30, 45, 60].forEach(function(s){
+  var el = document.createElement("div");
+  el.className = "chip" + (s === timePerQ ? " on" : "");
+  el.textContent = s + "s";
+  el.onclick = function(){
+    timePerQ = s;
+    document.querySelectorAll("#time-chips .chip").forEach(function(c){ c.classList.remove("on"); });
+    el.classList.add("on");
+    updateReadyInfo();
+  };
+  document.getElementById("time-chips").appendChild(el);
+});
+
+function updateReadyInfo(){
+  var top = document.getElementById("topic-select").value;
+  var count = document.getElementById("q-count").value;
+  document.getElementById("ready-info").textContent = "Topik: " + top + " • " + count + " Soal • " + timePerQ + "s/soal";
+}
+
+function loadTopic(){
+  updateReadyInfo();
+}
+
+// Camera Management
+function detectCameras(){
+  if(!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+  navigator.mediaDevices.getUserMedia({video:true,audio:false}).then(function(s){
+    s.getTracks().forEach(function(t){ t.stop(); });
+    navigator.mediaDevices.enumerateDevices().then(function(devs){
+      var sel = document.getElementById("cam-select");
+      sel.innerHTML = '<option value="">Kamera Otomatis</option>';
+      devs.filter(function(d){ return d.kind === "videoinput"; }).forEach(function(d, i){
+        var opt = document.createElement("option");
+        opt.value = d.deviceId;
+        opt.textContent = d.label || ("Kamera " + (i+1));
+        sel.appendChild(opt);
+      });
+      alert("Kamera berhasil dideteksi!");
+    });
+  }).catch(function(){
+    alert("Izin kamera belum diberikan pada peramban.");
+  });
+}
+
+function toggleMirror(){
+  isMirrored = !isMirrored;
+  document.getElementById("cam").style.transform = isMirrored ? "scaleX(-1)" : "none";
+  document.getElementById("mirror-btn").textContent = "Mode Cermin: " + (isMirrored ? "ON" : "OFF");
+}
+
+// Sound Synthesizer via Web Audio
+var audioCtx = null;
+function playSound(type){
+  try {
+    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if(audioCtx.state === "suspended") audioCtx.resume();
+    var osc = audioCtx.createOscillator();
+    var gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    var now = audioCtx.currentTime;
+
+    if(type === "tick"){
+      osc.frequency.setValueAtTime(800, now);
+      gain.gain.setValueAtTime(0.1, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+      osc.start(now); osc.stop(now + 0.06);
+    } else if(type === "hurry"){
+      osc.frequency.setValueAtTime(1100, now);
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+      osc.start(now); osc.stop(now + 0.12);
+    } else if(type === "reveal"){
+      [523.25, 659.25, 783.99, 1046.5].forEach(function(f, i){
+        var o = audioCtx.createOscillator();
+        var g = audioCtx.createGain();
+        o.connect(g); g.connect(audioCtx.destination);
+        o.frequency.setValueAtTime(f, now + i*0.06);
+        g.gain.setValueAtTime(0.15, now + i*0.06);
+        g.gain.exponentialRampToValueAtTime(0.001, now + i*0.06 + 0.5);
+        o.start(now + i*0.06); o.stop(now + i*0.06 + 0.55);
+      });
+    }
+  } catch(e){}
+}
+
+// Participant Selection Mode
+var partMode = 'pribadi';
+var currentParticipant = { type: 'pribadi', name: 'Budi Santoso', className: 'Kelas 7B', members: [] };
+var groupMembersList = ['Andi', 'Siti', 'Budi'];
+
+function openParticipantModal(){
+  renderMemberChips();
+  document.getElementById("participant-modal").style.display = "grid";
+}
+
+function closeParticipantModal(){
+  document.getElementById("participant-modal").style.display = "none";
+}
+
+function setPartMode(mode){
+  partMode = mode;
+  var cardP = document.getElementById("card-pribadi");
+  var cardK = document.getElementById("card-kelompok");
+  var formP = document.getElementById("form-pribadi");
+  var formK = document.getElementById("form-kelompok");
+
+  if(mode === 'pribadi'){
+    cardP.style.borderColor = "var(--a)";
+    cardP.style.background = "#1e3a8a33";
+    cardK.style.borderColor = "#334155";
+    cardK.style.background = "#020617";
+    formP.style.display = "grid";
+    formK.style.display = "none";
+  } else {
+    cardK.style.borderColor = "var(--b)";
+    cardK.style.background = "#9a341233";
+    cardP.style.borderColor = "#334155";
+    cardP.style.background = "#020617";
+    formK.style.display = "grid";
+    formP.style.display = "none";
+  }
+}
+
+function renderMemberChips(){
+  var cont = document.getElementById("members-chip-container");
+  var html = "";
+  groupMembersList.forEach(function(m, i){
+    html += '<span style="display:inline-flex;align-items:center;gap:6px;background:#ea580c26;border:1px solid #ea580c4d;color:#fdba74;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:600">' +
+      '<span>' + m + '</span>' +
+      '<button type="button" onclick="removeMemberTag(' + i + ')" style="background:none;border:none;cursor:pointer;color:#fdba74;font-weight:bold;margin-left:4px">✕</button>' +
+    '</span>';
+  });
+  cont.innerHTML = html || '<span style="font-size:11px;color:var(--mut)">Belum ada anggota. Tambahkan nama di atas.</span>';
+}
+
+function addMemberTag(){
+  var inp = document.getElementById("part-member-input");
+  var val = inp.value.trim();
+  if(!val) return;
+  if(val.indexOf(",") > -1){
+    val.split(",").forEach(function(s){ if(s.trim()) groupMembersList.push(s.trim()); });
+  } else {
+    groupMembersList.push(val);
+  }
+  inp.value = "";
+  renderMemberChips();
+}
+
+function removeMemberTag(idx){
+  groupMembersList.splice(idx, 1);
+  renderMemberChips();
+}
+
+function confirmParticipantAndStart(){
+  if(partMode === 'pribadi'){
+    var pName = document.getElementById("part-pribadi-name").value.trim();
+    var pClass = document.getElementById("part-pribadi-class").value.trim() || 'Kelas Umum';
+    if(!pName){
+      alert("Harap masukkan Nama Siswa.");
+      return;
+    }
+    currentParticipant = { type: 'pribadi', name: pName, className: pClass, members: [] };
+  } else {
+    var gName = document.getElementById("part-group-name").value.trim();
+    var gClass = document.getElementById("part-group-class").value.trim() || 'Kelas Umum';
+    if(!gName){
+      alert("Harap masukkan Nama Kelompok.");
+      return;
+    }
+    if(!groupMembersList.length){
+      alert("Harap masukkan minimal 1 nama anggota kelompok.");
+      return;
+    }
+    currentParticipant = { type: 'kelompok', name: gName, className: gClass, members: groupMembersList.slice() };
+  }
+
+  closeParticipantModal();
+  startGame();
+}
+
+// Start Game
+function startGame(){
+  var cat = document.getElementById("topic-select").value;
+  var rawList = BANK[cat] || BANK["Informatika"];
+  var count = parseInt(document.getElementById("q-count").value, 10) || 10;
+
+  var pool = rawList.slice().sort(function(){ return Math.random() - 0.5; });
+  if(pool.length < count){
+    Object.keys(BANK).forEach(function(k){
+      if(k !== cat && pool.length < count){
+        BANK[k].forEach(function(item){
+          if(pool.length < count && !pool.some(function(p){ return p[0] === item[0]; })){
+            pool.push(item);
+          }
+        });
+      }
+    });
+  }
+  pool = pool.slice(0, count);
+  activeQuestions = pool.map(function(item){
+    return {
+      q: item[0],
+      a: item[1],
+      b: item[2],
+      ans: item[3],
+      exp: item[4] || ""
+    };
+  });
+
+  curIdx = 0;
+  totalSessionTime = 0;
+  playerCorrect = 0;
+
+  playBgm();
+
+  document.getElementById("setup").style.display = "none";
+  document.getElementById("game").style.display = "block";
+
+  // Init Camera
+  var devId = document.getElementById("cam-select").value;
+  var constraints = { audio: false, video: devId ? { deviceId: { exact: devId } } : { facingMode: "user" } };
+
+  navigator.mediaDevices.getUserMedia(constraints).then(function(st){
+    camStream = st;
+    document.getElementById("cam").srcObject = st;
+  }).catch(function(){
+    console.warn("Kamera fisik tidak dapat diakses. Menggunakan simulasi tampilan.");
+  });
+
+  loadCurrentQuestion();
+}
+
+function loadCurrentQuestion(){
+  isRevealed = false;
+  isPaused = false;
+  var item = activeQuestions[curIdx];
+
+  document.getElementById("q-meta").textContent = "SOAL " + (curIdx + 1) + " / " + activeQuestions.length;
+  document.getElementById("q-title").textContent = item.q;
+  document.getElementById("text-a").textContent = item.a;
+  document.getElementById("text-b").textContent = item.b;
+
+  document.getElementById("za").className = "zone";
+  document.getElementById("zb").className = "zone";
+  document.getElementById("oa").classList.remove("win");
+  document.getElementById("ob").classList.remove("win");
+  document.getElementById("reveal-card").style.display = "none";
+  document.getElementById("main-next-btn").textContent = "Kunci Jawaban (Spasi)";
+
+  t0 = Date.now();
+  clearInterval(timer);
+  timer = setInterval(tick, 50);
+}
+
+function tick(){
+  if(isPaused) return;
+  var elapsed = (Date.now() - t0) / 1000;
+  var remain = Math.max(0, timePerQ - elapsed);
+
+  document.getElementById("clock-num").textContent = Math.ceil(remain) + "s";
+  var pct = (remain / timePerQ) * 100;
+  var bar = document.getElementById("timer-bar");
+  bar.style.width = pct + "%";
+  bar.style.background = remain <= 3 ? "var(--no)" : (remain <= timePerQ * 0.4 ? "var(--gold)" : "var(--ok)");
+
+  if(remain <= 3 && Math.ceil(remain) > 0) playSound("hurry");
+  else if(Math.floor(elapsed) !== Math.floor(elapsed - 0.05)) playSound("tick");
+
+  if(remain <= 0){
+    revealAnswer();
+  }
+}
+
+function revealAnswer(){
+  clearInterval(timer);
+  isRevealed = true;
+  totalSessionTime += timePerQ;
+  var item = activeQuestions[curIdx];
+
+  var za = document.getElementById("za");
+  var zb = document.getElementById("zb");
+  var oa = document.getElementById("oa");
+  var ob = document.getElementById("ob");
+
+  if(item.ans === "A"){
+    za.className = "zone ok"; zb.className = "zone no";
+    oa.classList.add("win");
+  } else {
+    zb.className = "zone ok"; za.className = "zone no";
+    ob.classList.add("win");
+  }
+
+  document.getElementById("reveal-ans").textContent = "JAWABAN: " + item.ans + " (" + (item.ans === "A" ? item.a : item.b) + ")";
+  document.getElementById("reveal-exp").textContent = item.exp ? ("💡 " + item.exp) : "Siswa di zona yang benar bersorak!";
+  document.getElementById("reveal-card").style.display = "block";
+
+  playSound("reveal");
+  if(window.confetti){
+    confetti({ particleCount: 70, origin: { x: item.ans === "A" ? 0.25 : 0.75, y: 0.6 } });
+  }
+
+  document.getElementById("main-next-btn").textContent = curIdx >= activeQuestions.length - 1 ? "Lihat Hasil Akhir" : "Lanjut (Spasi)";
+}
+
+function modScore(delta){
+  playerCorrect = Math.max(0, Math.min(activeQuestions.length, playerCorrect + delta));
+  var el = document.getElementById("score-counter-txt");
+  if(el) el.textContent = playerCorrect + " Poin";
+}
+
+function addScoreAnim(e){
+  modScore(1);
+  playSound("reveal");
+
+  var x = window.innerWidth / 2;
+  var y = window.innerHeight / 2;
+  if(e && e.clientX){
+    x = e.clientX;
+    y = e.clientY - 20;
+  }
+
+  var badge = document.createElement("div");
+  badge.className = "floating-jump-badge";
+  badge.style.left = x + "px";
+  badge.style.top = y + "px";
+  badge.innerHTML = '<span style="font-size:36px;font-weight:900;color:#fde047;text-shadow:0 0 15px #f59e0b">+1</span><div style="text-align:left"><div style="font-size:13px;font-weight:900;color:#34d399">BENAR! ⭐</div><div style="font-size:9px;color:#fde047;font-weight:700">POIN BERTAMBAH</div></div>';
+  document.body.appendChild(badge);
+
+  if(window.confetti){
+    confetti({ particleCount: 35, spread: 55, origin: { x: x / window.innerWidth, y: y / window.innerHeight } });
+  }
+
+  setTimeout(function(){
+    badge.remove();
+  }, 1300);
+}
+
+function nextQuestion(){
+  if(!isRevealed){
+    revealAnswer();
+    return;
+  }
+  if(curIdx >= activeQuestions.length - 1){
+    finishGame();
+    return;
+  }
+  curIdx++;
+  loadCurrentQuestion();
+}
+
+function repeatQuestion(){
+  loadCurrentQuestion();
+}
+
+function togglePause(){
+  isPaused = !isPaused;
+  document.getElementById("pause-btn").textContent = isPaused ? "▶ Lanjut" : "⏸ Jeda";
+}
+
+function exitToMenu(){
+  clearInterval(timer);
+  if(camStream){ camStream.getTracks().forEach(function(t){ t.stop(); }); camStream = null; }
+  document.getElementById("game").style.display = "none";
+  document.getElementById("setup").style.display = "flex";
+}
+
+function finishGame(){
+  clearInterval(timer);
+  var defName = currentParticipant.name + " (" + currentParticipant.className + ")";
+  var name = prompt("Kuis Selesai! Konfirmasi nama Tim/Siswa untuk Papan Peringkat:", defName);
+  if(name){
+    saveScore(name, Math.round(activeQuestions.length * 0.9), activeQuestions.length, Math.round(totalSessionTime));
+  }
+  exitToMenu();
+  openLeaderboard();
+}
+
+// Leaderboard Logic (Local Storage)
+var LB_KEY = "kuis_gerak_leaderboard_v1";
+var activeLbTab = "score";
+
+function getScores(){
+  try {
+    var raw = localStorage.getItem(LB_KEY);
+    if(raw) return JSON.parse(raw);
+  } catch(e){}
+  return [
+    { playerName: "Tim Bintang Kelas", correctCount: 10, totalQuestions: 10, timeSpentSeconds: 48.2, date: new Date().toISOString() },
+    { playerName: "Regu Garuda Jaya", correctCount: 9, totalQuestions: 10, timeSpentSeconds: 52.8, date: new Date().toISOString() },
+    { playerName: "Tim Kilat 7B", correctCount: 9, totalQuestions: 10, timeSpentSeconds: 61.4, date: new Date().toISOString() },
+    { playerName: "Kelompok Rajawali", correctCount: 8, totalQuestions: 10, timeSpentSeconds: 45.0, date: new Date().toISOString() },
+    { playerName: "Squad Juara SD", correctCount: 8, totalQuestions: 10, timeSpentSeconds: 68.7, date: new Date().toISOString() }
+  ];
+}
+
+function saveScore(name, correct, total, timeSec){
+  var current = getScores();
+  current.unshift({
+    playerName: name,
+    correctCount: correct,
+    totalQuestions: total,
+    timeSpentSeconds: timeSec,
+    date: new Date().toISOString()
+  });
+  localStorage.setItem(LB_KEY, JSON.stringify(current));
+}
+
+function openLeaderboard(){
+  renderLeaderboard();
+  document.getElementById("leaderboard-modal").style.display = "grid";
+}
+
+function closeLeaderboard(){
+  document.getElementById("leaderboard-modal").style.display = "none";
+}
+
+function switchLbTab(tab){
+  activeLbTab = tab;
+  document.getElementById("tab-top-score").className = "btn " + (tab === "score" ? "btn-pri" : "btn-sec");
+  document.getElementById("tab-top-speed").className = "btn " + (tab === "speed" ? "btn-pri" : "btn-sec");
+  renderLeaderboard();
+}
+
+function renderLeaderboard(){
+  var scores = getScores();
+  if(activeLbTab === "score"){
+    scores.sort(function(a,b){
+      if(b.correctCount !== a.correctCount) return b.correctCount - a.correctCount;
+      return a.timeSpentSeconds - b.timeSpentSeconds;
+    });
+  } else {
+    scores.sort(function(a,b){
+      if(a.timeSpentSeconds !== b.timeSpentSeconds) return a.timeSpentSeconds - b.timeSpentSeconds;
+      return b.correctCount - a.correctCount;
+    });
+  }
+
+  var top5 = scores.slice(0, 5);
+  var html = "";
+  var medals = ["🥇","🥈","🥉","#4","#5"];
+
+  top5.forEach(function(row, i){
+    html += '<div style="background:#020617;border:1px solid #1e293b;border-radius:14px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between">' +
+      '<div style="display:flex;align-items:center;gap:12px">' +
+        '<span style="font-size:20px;font-weight:900">' + medals[i] + '</span>' +
+        '<div><b style="font-size:14px">' + row.playerName + '</b>' +
+        '<div style="font-size:11px;color:var(--mut)">' + new Date(row.date).toLocaleDateString("id-ID") + '</div></div>' +
+      '</div>' +
+      '<div style="text-align:right">' +
+        '<div style="color:var(--ok);font-weight:900;font-size:14px">' + row.correctCount + '/' + row.totalQuestions + ' Benar</div>' +
+        '<div style="color:var(--mut);font-size:11px">' + row.timeSpentSeconds + ' detik</div>' +
+      '</div>' +
+    '</div>';
+  });
+
+  document.getElementById("lb-list").innerHTML = html || '<p style="color:var(--mut);text-align:center">Belum ada rekor tersimpan.</p>';
+}
+
+function resetLb(){
+  if(confirm("Reset seluruh data peringkat ke default?")){
+    localStorage.removeItem(LB_KEY);
+    renderLeaderboard();
+  }
+}
+
+// Keyboard shortcuts (Space to reveal/next, R to repeat)
+document.addEventListener("keydown", function(e){
+  if(document.getElementById("game").style.display === "block"){
+    if(e.code === "Space" || e.code === "ArrowRight"){
+      e.preventDefault();
+      nextQuestion();
+    } else if(e.code === "KeyR"){
+      repeatQuestion();
+    }
+  }
+});
+
+// CSV Sample & File Reader
+function downloadSampleCSV(){
+  var csv = "\uFEFFpertanyaan;pilihan A;pilihan B;jawaban\nIbu kota Indonesia adalah...;Jakarta;Bandung;A\n7 x 8 = ...;54;56;B\nAir membeku pada suhu...;0 derajat C;100 derajat C;A\n";
+  var blob = new Blob([csv], {type:"text/csv;charset=utf-8"});
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "contoh-soal-kuis-gerak.csv";
+  a.click();
+}
+
+function handleFile(f){
+  if(!f) return;
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var lines = e.target.result.split(/\r?\n/).filter(function(l){ return l.trim(); });
+    var rows = lines.map(function(l){
+      if(l.indexOf(";") > -1) return l.split(";");
+      if(l.indexOf("\t") > -1) return l.split("\t");
+      return l.split("|");
+    });
+    var parsed = [];
+    rows.forEach(function(r){
+      if(r.length >= 4 && r[0].trim()){
+        parsed.push([r[0].trim(), r[1].trim(), r[2].trim(), r[3].trim().toUpperCase()]);
+      }
+    });
+    if(parsed.length){
+      BANK["Kustom"] = parsed;
+      document.getElementById("topic-select").value = "Kustom";
+      document.getElementById("upload-status").textContent = "✓ " + parsed.length + " soal dari " + f.name + " berhasil dimuat!";
+      updateReadyInfo();
+    }
+  };
+  reader.readAsText(f);
+}
+
+function togglePasteArea(){
+  var box = document.getElementById("paste-box");
+  box.style.display = box.style.display === "block" ? "none" : "block";
+}
+
+function applyPaste(){
+  var val = document.getElementById("paste-ta").value.trim();
+  if(!val) return;
+  var lines = val.split(/\r?\n/).filter(Boolean);
+  var parsed = [];
+  lines.forEach(function(l){
+    var r = l.indexOf("\t") > -1 ? l.split("\t") : (l.indexOf(";") > -1 ? l.split(";") : l.split("|"));
+    if(r.length >= 4){
+      parsed.push([r[0].trim(), r[1].trim(), r[2].trim(), r[3].trim().toUpperCase()]);
+    }
+  });
+  if(parsed.length){
+    BANK["Kustom"] = parsed;
+    document.getElementById("topic-select").value = "Kustom";
+    document.getElementById("upload-status").textContent = "✓ " + parsed.length + " soal tempelan berhasil dimuat!";
+    updateReadyInfo();
+  }
+}
+</script>
+</body>
+</html>

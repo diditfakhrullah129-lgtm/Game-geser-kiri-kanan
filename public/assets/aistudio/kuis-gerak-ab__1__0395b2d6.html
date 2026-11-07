@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kuis Gerak A atau B</title>
+<style>
+:root{color-scheme:dark;--bg:#0f1530;--card:#1a2350;--line:#2f3b78;--tx:#eef1ff;--mut:#9aa6d8;--a:#2f6bff;--b:#ff7a45;--ok:#22c55e;--no:#ef4444;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+button,select,input,textarea{font:inherit;color:var(--tx)}
+#setup{max-width:640px;margin:0 auto;padding:18px;display:flex;flex-direction:column;gap:12px}
+h1{margin:4px 0 0;font-size:22px}.sub{color:var(--mut);font-size:14px;margin:0}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;gap:10px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+label{font-size:12px;color:var(--mut);display:grid;gap:4px}
+select,input,textarea{background:#101940;border:1px solid var(--line);border-radius:10px;padding:9px}
+textarea{min-height:150px;width:100%;font-size:13px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{background:#101940;border:1px solid var(--line);border-radius:999px;padding:7px 12px;cursor:pointer;font-size:13px}
+.chip.on{background:var(--a);border-color:var(--a)}
+.btn{border:0;border-radius:12px;padding:11px 16px;cursor:pointer;font-weight:600;background:#3a4a99}
+.btn.go{background:var(--ok);color:#06210f}.btn.pri{background:var(--a)}
+#drop.over{outline:2px dashed var(--a)}
+.head{display:flex;align-items:center;gap:10px;justify-content:center;margin:6px 0}
+.ab{width:44px;height:44px;border-radius:10px;display:grid;place-items:center;font-weight:800;font-size:22px}
+#game{display:none;position:fixed;inset:0;background:#000;overflow:hidden}
+#cam{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);background:linear-gradient(135deg,#1c2a6b,#3a1f5e)}
+#qbox{position:absolute;top:0;left:0;right:0;padding:calc(10px + env(safe-area-inset-top,0px)) 14px 10px;background:linear-gradient(#000c,#0000);text-align:center}
+#cnt{font-size:12px;color:#ffffffb0;letter-spacing:.08em}
+#q{font-size:clamp(16px,3.2vw,30px);font-weight:700;margin:4px auto 0;max-width:1000px;text-shadow:0 2px 6px #000}
+#timer{position:absolute;top:0;left:0;height:6px;background:var(--ok);width:100%}
+#tnum{position:absolute;top:calc(10px + env(safe-area-inset-top,0px));right:12px;background:#000a;border-radius:8px;padding:4px 10px;font-weight:700}
+.opt{position:absolute;top:34%;max-width:34%;display:flex;gap:8px;align-items:center;padding:8px 10px;border-radius:12px;background:#000a;font-weight:700;font-size:clamp(14px,2.6vw,26px)}
+#oa{left:10px}#ob{right:10px;flex-direction:row-reverse;text-align:right}
+.half{position:absolute;top:0;bottom:0;width:50%;opacity:0;transition:opacity .4s;pointer-events:none}
+#ha{left:0}#hb{right:0}
+.half.ok{background:#22c55e99;opacity:1}.half.no{background:#ef444499;opacity:1}
+#mid{position:absolute;top:0;bottom:0;left:50%;width:2px;background:#fff6}
+#ans{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#000b;border:2px solid #fff;border-radius:12px;padding:10px 22px;font-size:clamp(18px,4vw,40px);font-weight:800;display:none;white-space:nowrap}
+#ctl{position:absolute;bottom:calc(12px + env(safe-area-inset-bottom,0px));left:0;right:0;display:flex;gap:10px;justify-content:center}
+#end{position:absolute;inset:0;background:#0f1530ee;display:none;place-items:center;text-align:center}
+#note{position:absolute;bottom:64px;left:0;right:0;text-align:center;font-size:12px;color:#ffd}
+</style>
+</head>
+<body>
+<div id="setup">
+  <h1>Kuis Gerak: Pilih A atau B</h1>
+  <p class="sub">Siswa berdiri di sisi kiri (A) atau kanan (B) layar sebelum waktu habis.</p>
+  <div class="head"><div class="ab" style="background:var(--a)">A</div><button class="btn go" id="start">Mulai kuis</button><div class="ab" style="background:var(--b)">B</div></div>
+  <div class="panel" id="drop"><b>Upload soal</b><p class="sub">Tarik file ke sini atau pilih file (.xlsx, .csv, atau .txt). Isi 4 kolom: pertanyaan, pilihan A, pilihan B, jawaban (A atau B). Soal langsung siap dimainkan.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><label class="btn pri" for="file" style="cursor:pointer">Pilih file soal</label><button class="btn" id="tpl">Unduh contoh format</button></div><input type="file" id="file" style="position:absolute;width:1px;height:1px;opacity:0"><p class="sub" id="upinfo"></p><label>Atau tempel soal di sini (salin langsung dari Excel atau Google Sheets, 4 kolom)<textarea id="paste" style="min-height:80px" placeholder="Ibu kota Indonesia adalah...\tJakarta\tBandung\tA"></textarea></label><button class="btn go" id="pastebtn">Pakai soal tempelan</button></div>
+  <div class="panel"><label>Kamera<select id="camsel"><option value="">Kamera otomatis</option></select></label><button class="btn" id="detect">Deteksi kamera</button><p class="sub">Colok kamera eksternal, lalu klik Deteksi kamera dan pilih namanya.</p></div>
+  <div class="panel">
+    <label>Waktu per soal</label>
+    <div class="chips" id="tchips"></div>
+  </div>
+  <div class="panel">
+    <div class="row">
+      <label>Mata pelajaran<select id="mapel"></select></label>
+      <label>Kelas<select id="kelas"></select></label>
+      <label>Tingkat kesulitan<select id="level"><option>Mudah</option><option selected>Sedang</option><option>Sulit</option></select></label>
+      <label>Jumlah soal (maks. 30)<input id="jml" type="number" min="1" max="30" value="10"></label>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn pri" id="load">Muat soal ini</button>
+      <button class="btn" id="edit">Edit soal</button>
+    </div>
+    <div id="editor" style="display:none;gap:6px">
+      <label>Satu soal per baris: pertanyaan | pilihan A | pilihan B | jawaban (A/B)
+        <textarea id="ta"></textarea></label>
+      <button class="btn pri" id="apply">Simpan soal</button>
+    </div>
+    <p class="sub" id="info"></p>
+  </div>
+</div>
+
+<div id="game">
+  <video id="cam" autoplay playsinline muted></video>
+  <div class="half" id="ha"></div><div class="half" id="hb"></div><div id="mid"></div>
+  <div id="timer"></div><div id="tnum"></div>
+  <div id="qbox"><div id="cnt"></div><div id="q"></div></div>
+  <div class="opt" id="oa"><div class="ab" style="background:var(--a)">A</div><span id="ta1"></span></div>
+  <div class="opt" id="ob"><div class="ab" style="background:var(--b)">B</div><span id="tb1"></span></div>
+  <div id="ans"></div><div id="note"></div>
+  <div id="ctl"><button class="btn" id="rep">Ulangi</button><button class="btn go" id="next">Lewati</button><button class="btn" id="camnext">Ganti kamera</button><button class="btn" id="menu">Menu</button></div>
+  <div id="end"><div><h1 id="endt">Kuis selesai!</h1><p class="sub">Terima kasih sudah bermain.</p><button class="btn pri" id="back">Kembali ke menu</button></div></div>
+</div>
+
+<script>
+var BANK={
+"Informatika":[
+["Perangkat lunak yang mengatur kerja perangkat keras adalah...","Browser","Sistem operasi","B"],
+["Protokol yang aman untuk membuka situs web adalah...","HTTPS","HTTP","A"],
+["Bahasa untuk membuat struktur halaman web adalah...","HTML","Python","A"],
+["Perangkat untuk mencetak dokumen disebut...","Scanner","Printer","B"],
+["Satuan terkecil data komputer adalah...","Bit","Byte","A"],
+["Mesin pencari yang populer adalah...","Google","Excel","A"],
+["Ctrl + C digunakan untuk...","Menyalin","Menempel","A"],
+["RAM berfungsi sebagai memori...","Sementara","Permanen","A"]],
+"Matematika":[
+["7 x 8 = ...","54","56","B"],["Hasil dari 144 : 12 adalah...","12","14","A"],
+["Bilangan prima adalah...","9","11","B"],["Sudut siku-siku besarnya...","90 derajat","180 derajat","A"],
+["Hasil 15 + 27 adalah...","42","43","A"],["Akar kuadrat dari 81 adalah...","8","9","B"],
+["Keliling persegi dengan sisi 5 cm adalah...","20 cm","25 cm","A"],["Setengah dari 250 adalah...","120","125","B"]],
+"IPA":[
+["Planet terdekat dari Matahari adalah...","Merkurius","Venus","A"],
+["Proses tumbuhan membuat makanan disebut...","Fotosintesis","Respirasi","A"],
+["Air membeku pada suhu...","0 derajat Celsius","100 derajat Celsius","A"],
+["Alat pernapasan ikan adalah...","Paru-paru","Insang","B"],
+["Gas yang kita hirup untuk bernapas adalah...","Oksigen","Karbon dioksida","A"],
+["Sumber energi utama bumi adalah...","Bulan","Matahari","B"],
+["Hewan pemakan tumbuhan disebut...","Herbivora","Karnivora","A"]],
+"Pengetahuan Umum":[
+["Ibu kota Indonesia adalah...","Jakarta","Bandung","A"],
+["Presiden pertama Indonesia adalah...","Soekarno","Soeharto","A"],
+["Jumlah provinsi pulau Jawa (tanpa DKI) ada...","5","6","A"],
+["Lambang sila pertama Pancasila adalah...","Bintang","Rantai","A"],
+["Hari Kemerdekaan Indonesia jatuh pada...","17 Agustus","28 Oktober","A"],
+["Hewan khas Pulau Komodo adalah...","Komodo","Orangutan","A"],
+["Samudra terluas di dunia adalah...","Pasifik","Hindia","A"]],
+"Bahasa Indonesia":[
+["Lawan kata dari rajin adalah...","Malas","Giat","A"],
+["Kalimat tanya diakhiri tanda...","Titik","Tanda tanya","B"],
+["Sinonim dari cantik adalah...","Indah","Buruk","A"],
+["Huruf kapital dipakai di awal...","Kalimat","Koma","A"],
+["Kata benda contohnya...","Meja","Berlari","A"],
+["Kata kerja contohnya...","Makan","Merah","A"]]};
+var $=function(i){return document.getElementById(i)};
+var time=15,Q=[],idx=0,tmr=null,t0=0,locked=false,stream=null;
+// setup
+[5,10,15,20,30,60].forEach(function(s){var c=document.createElement("div");c.className="chip"+(s==time?" on":"");c.textContent=s+" detik";c.onclick=function(){time=s;[].forEach.call($("tchips").children,function(x){x.classList.remove("on")});c.classList.add("on")};$("tchips").appendChild(c)});
+Object.keys(BANK).forEach(function(m){$("mapel").add(new Option(m,m))});
+for(var k=1;k<=12;k++)$("kelas").add(new Option("Kelas "+k,k));
+function shuffle(a){for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t}return a}
+function loadBank(){
+  var n=Math.max(1,Math.min(30,+$("jml").value||10));
+  var src=shuffle(BANK[$("mapel").value].slice()).slice(0,n);
+  Q=src.map(function(r){ // acak posisi A/B
+    if(Math.random()<.5)return{q:r[0],a:r[1],b:r[2],c:r[3]};
+    return{q:r[0],a:r[2],b:r[1],c:r[3]=="A"?"B":"A"};});
+  $("ta").value=Q.map(function(x){return [x.q,x.a,x.b,x.c].join(" | ")}).join("\n");
+  $("info").textContent=Q.length+" soal siap ("+$("mapel").value+"). Bank soal bawaan masih contoh, gunakan Edit soal untuk soal sendiri.";
+}
+$("load").onclick=loadBank;
+$("edit").onclick=function(){$("editor").style.display=$("editor").style.display=="grid"?"none":"grid"};
+$("apply").onclick=function(){
+  var out=[];$("ta").value.split("\n").forEach(function(l){var p=l.split("|").map(function(s){return s.trim()});
+    if(p.length>=4&&/^[ab]$/i.test(p[3]))out.push({q:p[0],a:p[1],b:p[2],c:p[3].toUpperCase()})});
+  if(out.length){Q=out.slice(0,30);$("info").textContent=Q.length+" soal tersimpan."}else $("info").textContent="Format belum benar. Contoh: Ibu kota Indonesia? | Jakarta | Bandung | A";
+};
+loadBank();
+// kamera
+function sv(k,v){try{if(v===undefined)return localStorage.getItem(k)||"";localStorage.setItem(k,v)}catch(e){return ""}}
+function vc(){var id=$("camsel").value;var v={width:{ideal:1280},height:{ideal:720}};if(id)v.deviceId={ideal:id};else v.facingMode="user";return v}
+function listCams(){
+  if(!navigator.mediaDevices||!navigator.mediaDevices.enumerateDevices)return;
+  navigator.mediaDevices.enumerateDevices().then(function(ds){
+    var sel=$("camsel"),cur=sel.value||sv("cam");
+    sel.innerHTML="";sel.add(new Option("Kamera otomatis",""));
+    ds.filter(function(d){return d.kind=="videoinput"}).forEach(function(d,i){sel.add(new Option(d.label||("Kamera "+(i+1)),d.deviceId))});
+    sel.value=cur;if(sel.value!=cur)sel.value="";
+  }).catch(function(){});
+}
+$("camsel").onchange=function(){sv("cam",this.value)};
+$("detect").onclick=function(){
+  try{navigator.mediaDevices.getUserMedia({video:true,audio:false}).then(function(s){s.getTracks().forEach(function(t){t.stop()});listCams()}).catch(function(){$("upinfo").textContent="Izin kamera belum diberikan."})}catch(e){}
+};
+$("camnext").onclick=function(){
+  var s=$("camsel");if(s.options.length<2){$("note").textContent="Hanya satu kamera terdeteksi.";return}
+  s.selectedIndex=(s.selectedIndex+1)%s.options.length;sv("cam",s.value);stopCam();
+  navigator.mediaDevices.getUserMedia({video:vc(),audio:false}).then(function(st){stream=st;$("cam").srcObject=st;$("note").textContent="Kamera: "+s.options[s.selectedIndex].text}).catch(function(){$("note").textContent="Kamera ini tidak bisa dipakai"});
+};
+listCams();
+// upload soal
+function splitLine(l){
+  if(l.indexOf("|")>-1)return l.split("|");
+  if(l.indexOf("\t")>-1)return l.split("\t");
+  var d=(l.split(";").length>l.split(",").length)?";":",";
+  var o=[],c="",q=false;
+  for(var i=0;i<l.length;i++){var ch=l[i];
+    if(ch=='"'){if(q&&l[i+1]=='"'){c+='"';i++}else q=!q}
+    else if(ch==d&&!q){o.push(c);c=""}else c+=ch}
+  o.push(c);return o;
+}
+function parseRows(rows){
+  var out=[];
+  rows.forEach(function(r){
+    r=r.map(function(x){return String(x==null?"":x).trim()});
+    if(r.length<4||!r[0])return;
+    var j=r[3].toUpperCase();
+    if(j!="A"&&j!="B"){var t=r[3].toLowerCase();if(t&&t==r[1].toLowerCase())j="A";else if(t&&t==r[2].toLowerCase())j="B";else return}
+    out.push({q:r[0],a:r[1],b:r[2],c:j});
+  });
+  return out;
+}
+function done(rows,name){
+  if(!rows.length){$("upinfo").textContent="Tidak ada soal terbaca dari "+name+". Pastikan ada 4 kolom: pertanyaan, pilihan A, pilihan B, jawaban (A atau B).";return}
+  Q=rows.slice(0,100);
+  $("ta").value=Q.map(function(x){return [x.q,x.a,x.b,x.c].join(" | ")}).join("\n");
+  $("upinfo").textContent=Q.length+" soal dari "+name+" siap. Klik Mulai kuis.";
+}
+function withXlsx(cb){
+  if(window.XLSX)return cb(window.XLSX);
+  var s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+  s.onload=function(){cb(window.XLSX)};
+  s.onerror=function(){$("upinfo").textContent="File Excel butuh internet untuk dibaca. Simpan sebagai CSV lalu upload lagi."};
+  document.head.appendChild(s);
+}
+function handleFile(f){
+  if(!f)return;
+  var ext=(f.name.split(".").pop()||"").toLowerCase(),rd=new FileReader();
+  if(ext=="xlsx"||ext=="xls"){
+    rd.onload=function(){withXlsx(function(X){
+      var wb=X.read(rd.result,{type:"array"}),ws=wb.Sheets[wb.SheetNames[0]];
+      done(parseRows(X.utils.sheet_to_json(ws,{header:1,defval:""})),f.name)})};
+    rd.readAsArrayBuffer(f);
+  }else{
+    rd.onload=function(){var t=String(rd.result).replace(/^\uFEFF/,"");
+      done(parseRows(t.split(/\r?\n/).filter(function(l){return l.trim()}).map(splitLine)),f.name)};
+    rd.readAsText(f);
+  }
+}
+function usePaste(){var t=$("paste").value.replace(/^\uFEFF/,"");done(parseRows(t.split(/\r?\n/).filter(function(l){return l.trim()}).map(splitLine)),"tempelan")}
+$("pastebtn").onclick=usePaste;
+$("paste").addEventListener("paste",function(){setTimeout(usePaste,50)});
+$("file").onchange=function(){handleFile(this.files[0]);this.value=""};
+["dragover","dragenter"].forEach(function(ev){$("drop").addEventListener(ev,function(e){e.preventDefault();$("drop").classList.add("over")})});
+$("drop").addEventListener("dragleave",function(){$("drop").classList.remove("over")});
+$("drop").addEventListener("drop",function(e){e.preventDefault();$("drop").classList.remove("over");handleFile(e.dataTransfer.files[0])});
+$("tpl").onclick=function(){
+  var t="\uFEFFpertanyaan,pilihan A,pilihan B,jawaban\nIbu kota Indonesia adalah...,Jakarta,Bandung,A\n7 x 8 = ...,54,56,B\n";
+  var a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(t);a.download="contoh-soal.csv";
+  document.body.appendChild(a);a.click();a.remove();
+};
+// game
+function show(){
+  var s=Q[idx];locked=false;
+  $("cnt").textContent="SOAL "+(idx+1)+" / "+Q.length;$("q").textContent=s.q;
+  $("ta1").textContent=s.a;$("tb1").textContent=s.b;
+  $("ha").className="half";$("hb").className="half";$("ans").style.display="none";
+  $("next").textContent="Lewati";
+  t0=Date.now();clearInterval(tmr);
+  tmr=setInterval(tick,100);tick();
+}
+function tick(){
+  var left=time-(Date.now()-t0)/1000;
+  if(left<=0){reveal();return}
+  $("timer").style.width=(left/time*100)+"%";
+  $("timer").style.background=left<time*.3?"var(--no)":"var(--ok)";
+  $("tnum").textContent=Math.ceil(left);
+}
+function reveal(){
+  clearInterval(tmr);locked=true;var s=Q[idx];
+  $("timer").style.width="0";$("tnum").textContent="0";
+  $("ha").className="half "+(s.c=="A"?"ok":"no");$("hb").className="half "+(s.c=="B"?"ok":"no");
+  $("ans").textContent="JAWABAN: "+s.c;$("ans").style.display="block";
+  $("next").textContent=idx==Q.length-1?"Selesai":"Lanjut";
+}
+function next(){
+  if(!locked){reveal();return}
+  if(idx>=Q.length-1){$("end").style.display="grid";return}
+  idx++;show();
+}
+$("next").onclick=next;
+$("rep").onclick=function(){show()};
+document.addEventListener("keydown",function(e){if($("game").style.display=="block"&&(e.code=="Space"||e.code=="ArrowRight")){e.preventDefault();next()}});
+function stopCam(){if(stream){stream.getTracks().forEach(function(t){t.stop()});stream=null}}
+function leave(){clearInterval(tmr);stopCam();$("end").style.display="none";$("game").style.display="none";$("setup").style.display="flex"}
+$("menu").onclick=leave;$("back").onclick=leave;
+$("start").onclick=function(){
+  if(!Q.length)loadBank();
+  idx=0;$("setup").style.display="none";$("game").style.display="block";$("note").textContent="";
+  var go=function(){show()};
+  try{
+    navigator.mediaDevices.getUserMedia({video:vc(),audio:false})
+    .then(function(s){stream=s;$("cam").srcObject=s;go();listCams()})
+    .catch(function(){$("note").textContent="Kamera tidak bisa diakses. Izinkan kamera di browser, atau buka file ini langsung di laptop.";go()});
+  }catch(e){$("note").textContent="Kamera tidak tersedia di browser ini.";go()}
+};
+</script>
+</body>
+</html>
